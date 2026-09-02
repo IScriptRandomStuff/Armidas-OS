@@ -7,18 +7,18 @@ OBJS = boot/boot.o \
        kernel/vga/vga.o
 
 # add this rule alongside the other compile rules
-kernel/vga/vga.o: kernel/vga/vga.c
+kernel/vga/vga.o: src/vga/vga.c
 	$(CC) $(CFLAGS) -c kernel/vga/vga.c -o kernel/vga/vga.o
 
 all: mykernel.iso
 
 # Compile .c files
-kernel/kernel.o: kernel/kernel.c
+kernel/kernel.o: src/kernel.c
 	$(CC) $(CFLAGS) -c kernel/kernel.c -o kernel/kernel.o
 
 # Assemble .asm files
-boot/boot.o: boot/boot.asm
-	$(ASM) -f elf32 boot/boot.asm -o boot/boot.o
+boot/boot.o: src/boot.asm
+	$(ASM) -f elf32 src/boot.asm -o boot/boot.o
 
 # Link everything into a binary
 mykernel.bin: $(OBJS)
@@ -29,11 +29,11 @@ mykernel.bin: $(OBJS)
 # Package it into a bootable ISO with GRUB
 mykernel.iso: mykernel.bin
 	mkdir -p isodir/boot/grub
-	cp mykernel.bin isodir/boot/mykernel.bin
+	cp mykernel.bin isodir/src/mykernel.bin
 	echo 'set timeout=0'                          > isodir/boot/grub/grub.cfg
 	echo 'set default=0'                         >> isodir/boot/grub/grub.cfg
 	echo 'menuentry "MyKernel" {'                >> isodir/boot/grub/grub.cfg
-	echo '    multiboot /boot/mykernel.bin'      >> isodir/boot/grub/grub.cfg
+	echo '    multiboot /src/mykernel.bin'      >> isodir/boot/grub/grub.cfg
 	echo '}'                                     >> isodir/boot/grub/grub.cfg
 	grub-mkrescue -o mykernel.iso isodir
 
@@ -42,6 +42,6 @@ run: mykernel.iso
 	qemu-system-i386 -cdrom mykernel.iso
 
 clean:
-	rm -f boot/boot.o kernel/kernel.o kernel/vga/vga.o
+	rm -f src/boot.o src/kernel.o src/vga/vga.o
 	rm -f mykernel.bin mykernel.iso
 	rm -rf isodir
