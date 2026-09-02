@@ -1,4 +1,4 @@
-#include "vga.h"
+#include "vga/vga.h"
 
 void kernel_main(void)
 {

@@ -25,3 +25,5 @@ _start:
     mov esp, stack_top  ; set up stack
     call kernel_main    ; jump into C
     hlt                 ; halt if kernel_main returns
+
+    section .note.GNU-stack noalloc noexec nowrite progbits

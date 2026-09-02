@@ -1,4 +1,4 @@
-CC     = i686-elf-gcc
+CC     = i686-linux-gnu-gcc
 ASM    = nasm
 CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 
@@ -42,6 +42,6 @@ run: mykernel.iso
 	qemu-system-i386 -cdrom mykernel.iso
 
 clean:
-	rm -f boot/boot.o kernel/kernel.o
+	rm -f boot/boot.o kernel/kernel.o kernel/vga/vga.o
 	rm -f mykernel.bin mykernel.iso
 	rm -rf isodir
