@@ -3,7 +3,12 @@ ASM    = nasm
 CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 
 OBJS = boot/boot.o \
-       kernel/kernel.o
+       kernel/kernel.o \
+       kernel/vga/vga.o
+
+# add this rule alongside the other compile rules
+kernel/vga/vga.o: kernel/vga/vga.c
+	$(CC) $(CFLAGS) -c kernel/vga/vga.c -o kernel/vga/vga.o
 
 all: mykernel.iso
 
