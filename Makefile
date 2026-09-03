@@ -5,7 +5,12 @@ CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 OBJS = src/boot/boot.o \
        src/kernel/kernel.o \
        src/drivers/vga.o \
-       src/arch/x86/gdt.o
+       src/arch/x86/gdt.o \
+       src/arch/x86/idt.o
+
+# add this compile rule
+src/arch/x86/idt.o: src/arch/x86/idt.c
+	$(CC) $(CFLAGS) -c src/arch/x86/idt.c -o src/arch/x86/idt.o
 
 all: mykernel.iso
 
@@ -48,5 +53,6 @@ clean:
 	rm -f src/kernel/kernel.o
 	rm -f src/drivers/vga.o
 	rm -f src/arch/x86/gdt.o
+	rm -f src/arch/x86/idt.o
 	rm -f mykernel.bin mykernel.iso
 	rm -rf isodir
