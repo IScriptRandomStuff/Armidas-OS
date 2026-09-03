@@ -27,3 +27,21 @@ _start:
     hlt                 ; halt if kernel_main returns
 
     section .note.GNU-stack noalloc noexec nowrite progbits
+
+; GDT flush — called from gdt.c
+; loads the GDT pointer and reloads all segment registers
+global gdt_flush
+gdt_flush:
+    mov eax, [esp+4]    ; grab the pointer passed in from C
+    lgdt [eax]          ; tell the CPU where the GDT is
+
+    mov ax, 0x10        ; 0x10 = data segment (entry 2 in GDT)
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    jmp 0x08:.flush     ; far jump to reload CS with code segment (entry 1)
+.flush:
+    ret

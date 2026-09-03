@@ -2,23 +2,26 @@ CC     = i686-linux-gnu-gcc
 ASM    = nasm
 CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 
-OBJS = boot/boot.o \
-       kernel/kernel.o \
-       kernel/vga/vga.o
-
-# add this rule alongside the other compile rules
-kernel/vga/vga.o: src/vga/vga.c
-	$(CC) $(CFLAGS) -c kernel/vga/vga.c -o kernel/vga/vga.o
+OBJS = src/boot/boot.o \
+       src/kernel/kernel.o \
+       src/drivers/vga.o \
+       src/arch/x86/gdt.o
 
 all: mykernel.iso
 
-# Compile .c files
-kernel/kernel.o: src/kernel.c
-	$(CC) $(CFLAGS) -c kernel/kernel.c -o kernel/kernel.o
-
 # Assemble .asm files
-boot/boot.o: src/boot.asm
-	$(ASM) -f elf32 src/boot.asm -o boot/boot.o
+src/boot/boot.o: src/boot/boot.asm
+	$(ASM) -f elf32 src/boot/boot.asm -o src/boot/boot.o
+
+# Compile .c files
+src/kernel/kernel.o: src/kernel/kernel.c
+	$(CC) $(CFLAGS) -c src/kernel/kernel.c -o src/kernel/kernel.o
+
+src/drivers/vga.o: src/drivers/vga.c
+	$(CC) $(CFLAGS) -c src/drivers/vga.c -o src/drivers/vga.o
+
+src/arch/x86/gdt.o: src/arch/x86/gdt.c
+	$(CC) $(CFLAGS) -c src/arch/x86/gdt.c -o src/arch/x86/gdt.o
 
 # Link everything into a binary
 mykernel.bin: $(OBJS)
@@ -26,22 +29,24 @@ mykernel.bin: $(OBJS)
 	      -ffreestanding -O2 -nostdlib \
 	      $(OBJS) -lgcc
 
-# Package it into a bootable ISO with GRUB
+# Package into a bootable ISO
 mykernel.iso: mykernel.bin
 	mkdir -p isodir/boot/grub
-	cp mykernel.bin isodir/src/mykernel.bin
+	cp mykernel.bin isodir/boot/mykernel.bin
 	echo 'set timeout=0'                          > isodir/boot/grub/grub.cfg
 	echo 'set default=0'                         >> isodir/boot/grub/grub.cfg
-	echo 'menuentry "MyKernel" {'                >> isodir/boot/grub/grub.cfg
-	echo '    multiboot /src/mykernel.bin'      >> isodir/boot/grub/grub.cfg
+	echo 'menuentry "AmidasOS" {'                >> isodir/boot/grub/grub.cfg
+	echo '    multiboot /boot/mykernel.bin'      >> isodir/boot/grub/grub.cfg
 	echo '}'                                     >> isodir/boot/grub/grub.cfg
 	grub-mkrescue -o mykernel.iso isodir
 
-# Boot it in QEMU
 run: mykernel.iso
 	qemu-system-i386 -cdrom mykernel.iso
 
 clean:
-	rm -f src/boot.o src/kernel.o src/vga/vga.o
+	rm -f src/boot/boot.o
+	rm -f src/kernel/kernel.o
+	rm -f src/drivers/vga.o
+	rm -f src/arch/x86/gdt.o
 	rm -f mykernel.bin mykernel.iso
 	rm -rf isodir
