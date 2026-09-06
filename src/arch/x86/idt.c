@@ -20,7 +20,7 @@ static struct idt_entry idt[256];
 static struct idt_ptr   idtp;
 
 // Set one entry in the IDT
-static void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
+void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
 {
     idt[num].base_low  = (base & 0xFFFF);
     idt[num].base_high = (base >> 16) & 0xFFFF;

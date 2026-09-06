@@ -6,7 +6,15 @@ OBJS = src/boot/boot.o \
        src/kernel/kernel.o \
        src/drivers/vga.o \
        src/arch/x86/gdt.o \
-       src/arch/x86/idt.o
+       src/arch/x86/idt.o \
+       src/arch/x86/isr.o \
+       src/arch/x86/isr_stubs.o
+
+src/arch/x86/isr.o: src/arch/x86/isr.c
+	$(CC) $(CFLAGS) -c src/arch/x86/isr.c -o src/arch/x86/isr.o
+
+src/arch/x86/isr_stubs.o: src/arch/x86/isr_stubs.asm
+	$(ASM) -f elf32 src/arch/x86/isr_stubs.asm -o src/arch/x86/isr_stubs.o
 
 # add this compile rule
 src/arch/x86/idt.o: src/arch/x86/idt.c
@@ -54,5 +62,7 @@ clean:
 	rm -f src/drivers/vga.o
 	rm -f src/arch/x86/gdt.o
 	rm -f src/arch/x86/idt.o
+	rm -f src/arch/x86/isr.o
+	rm -f src/arch/x86/isr_stubs.o
 	rm -f mykernel.bin mykernel.iso
 	rm -rf isodir
