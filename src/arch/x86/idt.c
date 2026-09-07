@@ -1,54 +1,93 @@
 #include "idt.h"
+#include <stddef.h>
 
-// One IDT entry describes one interrupt handler
+/* -----------------------------------------------------------------------
+ * Types & constants
+ * ----------------------------------------------------------------------- */
+
+#define IDT_ENTRIES   256
+#define KERNEL_CS     0x08
+
+/* Gate type + DPL + present bit packed into the flags byte:
+ *   Bit 7    : Present (P)
+ *   Bits 6-5 : Descriptor Privilege Level (DPL)
+ *   Bit 4    : Storage segment (always 0 for interrupt gates)
+ *   Bits 3-0 : Gate type
+ *
+ *   0x8E = 1_00_0_1110b  →  Present, DPL=0, 32-bit interrupt gate
+ *   0xEE = 1_11_0_1110b  →  Present, DPL=3, 32-bit interrupt gate (user-callable)
+ */
+#define IDT_FLAG_KERNEL_GATE  0x8E
+#define IDT_FLAG_USER_GATE    0xEE
+
+/* A handler function pointer */
+typedef void (*isr_t)(void);
+
+/* One IDT entry describes one interrupt/exception handler */
 struct idt_entry {
-    uint16_t base_low;   // lower 16 bits of handler function address
-    uint16_t selector;   // GDT code segment selector (0x08)
-    uint8_t  always0;    // always zero
-    uint8_t  flags;      // type and privilege flags
-    uint16_t base_high;  // upper 16 bits of handler function address
+    uint16_t base_low;   /* bits  0-15 of handler address */
+    uint16_t selector;   /* GDT code segment selector     */
+    uint8_t  reserved;   /* always zero (was "always0")   */
+    uint8_t  flags;      /* type, DPL, and present bit    */
+    uint16_t base_high;  /* bits 16-31 of handler address */
 } __attribute__((packed));
 
-// This gets loaded into the CPU's IDTR register
+/* Loaded into the CPU's IDTR register via `lidt` */
 struct idt_ptr {
-    uint16_t limit;
-    uint32_t base;
+    uint16_t limit;      /* byte length of IDT minus 1 */
+    uint32_t base;       /* linear address of IDT[0]   */
 } __attribute__((packed));
 
-// 256 possible interrupts (CPU exceptions + hardware IRQs + software)
-static struct idt_entry idt[256];
+/* -----------------------------------------------------------------------
+ * Module-private state
+ * ----------------------------------------------------------------------- */
+
+static struct idt_entry idt[IDT_ENTRIES];
 static struct idt_ptr   idtp;
 
-// Set one entry in the IDT
-void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
+/* -----------------------------------------------------------------------
+ * Internal helpers
+ * ----------------------------------------------------------------------- */
+
+static void idt_set_gate(uint8_t num, isr_t handler,
+                         uint16_t sel, uint8_t flags)
 {
-    idt[num].base_low  = (base & 0xFFFF);
-    idt[num].base_high = (base >> 16) & 0xFFFF;
+    uint32_t base = (uint32_t)handler;
+
+    idt[num].base_low  = (uint16_t)(base & 0xFFFF);
+    idt[num].base_high = (uint16_t)(base >> 16);
     idt[num].selector  = sel;
-    idt[num].always0   = 0;
+    idt[num].reserved  = 0;
     idt[num].flags     = flags;
 }
 
-// Default handler — catches any interrupt we haven't handled yet
-static void default_handler(void)
+/* Minimal stub: swallows any unhandled interrupt and returns.
+ * Marked naked so we emit a bare `iret` rather than a C epilogue that
+ * would corrupt the interrupt frame on the stack. */
+__attribute__((naked))
+static void unhandled_isr(void)
 {
-    // just return for now, we'll add real handlers later
+    __asm__ __volatile__("iret");
 }
+
+/* -----------------------------------------------------------------------
+ * Public API
+ * ----------------------------------------------------------------------- */
 
 void idt_install(void)
 {
-    idtp.limit = (sizeof(struct idt_entry) * 256) - 1;
-    idtp.base  = (uint32_t)&idt;
+    idtp.limit = (uint16_t)(sizeof(idt) - 1);
+    idtp.base  = (uint32_t)idt;
 
-    // Zero out the entire IDT first
-    for (int i = 0; i < 256; i++) {
-        idt_set_gate(i, (uint32_t)default_handler, 0x08, 0x8E);
-    }
+    for (int i = 0; i < IDT_ENTRIES; i++)
+        idt_set_gate((uint8_t)i, unhandled_isr, KERNEL_CS, IDT_FLAG_KERNEL_GATE);
 
-    // Load the IDT into the CPU
-    __asm__ __volatile__(
-        "lidt %0"
-        :
-        : "m"(idtp)
-    );
+    __asm__ __volatile__("lidt %0" : : "m"(idtp) : "memory");
+}
+
+/* Register a custom handler for interrupt vector `num`.
+ * Call this after idt_install() to override the stub. */
+void idt_register_handler(uint8_t num, isr_t handler, uint8_t flags)
+{
+    idt_set_gate(num, handler, KERNEL_CS, flags);
 }

@@ -1,48 +1,24 @@
 #include <stdint.h>
+#include "io.h"
 #include "irq.h"
 #include "idt.h"
 #include "isr.h"
 #include "../../drivers/vga.h"
 
-// I/O Helpers
-
-static inline void outb(uint16_t port, uint8_t value)
-{
-    __asm__ __volatile__("outb %1, %0" : : "dN"(port), "a"(value));
-}
-
-static inline uint8_t inb(uint16_t port)
-{
-    uint8_t ret;
-    __asm__ __volatile__("inb %1, %0" : "=a"(ret) : "dN"(port));
-    return ret;
-}
-
-static inline void io_wait(void)
-{
-    outb(0x80, 0);
-}
-
-// IRQ
-
 void pic_send_eoi(uint8_t irq)
 {
     if (irq >= 8)
-        outb(0xA0, 0x20);  // send to PIC2 if IRQ came from it
-    outb(0x20, 0x20);      // always send to PIC1
+        outb(0xA0, 0x20);
+
+    outb(0x20, 0x20); // this isnt part of the if... do. not.
 }
 
-// array of function pointers — one slot per IRQ
-// you'll register handlers here later (keyboard goes in slot 1, timer in slot 0)
 static void (*irq_handlers[16])(struct registers *r);
 
 void irq_handler(struct registers *r)
 {
-    // r->int_no will be 32-47
-    // subtract 32 to get the actual IRQ number 0-15
     uint8_t irq = r->int_no - 32;
 
-    // call the registered handler if there is one
     if (irq_handlers[irq]) {
         irq_handlers[irq](r);
     }
@@ -52,7 +28,7 @@ void irq_handler(struct registers *r)
 
 void irq_install_handler(uint8_t irq, void (*handler)(struct registers *r))
 {
-    irq_handlers[irq] = handler;  // just this one line
+    irq_handlers[irq] = handler;
 }
 
 void irq_install(void)
