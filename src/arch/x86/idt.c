@@ -21,7 +21,7 @@
 #define IDT_FLAG_USER_GATE    0xEE
 
 /* A handler function pointer */
-typedef void (*isr_t)(void);
+idt_set_gate(32, (uint32_t)irq0, 0x08, 0x8E);
 
 /* One IDT entry describes one interrupt/exception handler */
 struct idt_entry {
@@ -49,7 +49,7 @@ static struct idt_ptr   idtp;
  * Internal helpers
  * ----------------------------------------------------------------------- */
 
-static void idt_set_gate(uint8_t num, isr_t handler,
+void idt_set_gate(uint8_t num, isr_t handler,
                          uint16_t sel, uint8_t flags)
 {
     uint32_t base = (uint32_t)handler;
