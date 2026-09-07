@@ -1,68 +1,45 @@
-CC     = i686-linux-gnu-gcc
-ASM    = nasm
-CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+CC     := i686-linux-gnu-gcc
+ASM    := nasm
+CFLAGS := -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 
-OBJS = src/boot/boot.o \
-       src/kernel/kernel.o \
-       src/drivers/vga.o \
-       src/arch/x86/gdt.o \
-       src/arch/x86/idt.o \
-       src/arch/x86/isr.o \
-       src/arch/x86/isr_stubs.o
+# Automatically find all C and assembly source files
+SRC_C   := $(shell find src -name '*.c')
+SRC_ASM := $(shell find src -name '*.asm')
+OBJS    := $(SRC_C:.c=.o) $(SRC_ASM:.asm=.o)
 
-src/arch/x86/isr.o: src/arch/x86/isr.c
-	$(CC) $(CFLAGS) -c src/arch/x86/isr.c -o src/arch/x86/isr.o
+# Compile C files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-src/arch/x86/isr_stubs.o: src/arch/x86/isr_stubs.asm
-	$(ASM) -f elf32 src/arch/x86/isr_stubs.asm -o src/arch/x86/isr_stubs.o
+# Assemble NASM files
+%.o: %.asm
+	$(ASM) -f elf32 $< -o $@
 
-# add this compile rule
-src/arch/x86/idt.o: src/arch/x86/idt.c
-	$(CC) $(CFLAGS) -c src/arch/x86/idt.c -o src/arch/x86/idt.o
-
+# Default target
 all: mykernel.iso
 
-# Assemble .asm files
-src/boot/boot.o: src/boot/boot.asm
-	$(ASM) -f elf32 src/boot/boot.asm -o src/boot/boot.o
-
-# Compile .c files
-src/kernel/kernel.o: src/kernel/kernel.c
-	$(CC) $(CFLAGS) -c src/kernel/kernel.c -o src/kernel/kernel.o
-
-src/drivers/vga.o: src/drivers/vga.c
-	$(CC) $(CFLAGS) -c src/drivers/vga.c -o src/drivers/vga.o
-
-src/arch/x86/gdt.o: src/arch/x86/gdt.c
-	$(CC) $(CFLAGS) -c src/arch/x86/gdt.c -o src/arch/x86/gdt.o
-
-# Link everything into a binary
+# Link everything into a kernel binary
 mykernel.bin: $(OBJS)
-	$(CC) -T linker.ld -o mykernel.bin \
+	$(CC) -T linker.ld -o $@ \
 	      -ffreestanding -O2 -nostdlib \
 	      $(OBJS) -lgcc
 
 # Package into a bootable ISO
 mykernel.iso: mykernel.bin
 	mkdir -p isodir/boot/grub
-	cp mykernel.bin isodir/boot/mykernel.bin
-	echo 'set timeout=0'                          > isodir/boot/grub/grub.cfg
-	echo 'set default=0'                         >> isodir/boot/grub/grub.cfg
-	echo 'menuentry "AmidasOS" {'                >> isodir/boot/grub/grub.cfg
-	echo '    multiboot /boot/mykernel.bin'      >> isodir/boot/grub/grub.cfg
-	echo '}'                                     >> isodir/boot/grub/grub.cfg
-	grub-mkrescue -o mykernel.iso isodir
+	cp $< isodir/boot/mykernel.bin
+	echo 'set timeout=0'                     > isodir/boot/grub/grub.cfg
+	echo 'set default=0'                    >> isodir/boot/grub/grub.cfg
+	echo 'menuentry "AmidasOS" {'           >> isodir/boot/grub/grub.cfg
+	echo '    multiboot /boot/mykernel.bin' >> isodir/boot/grub/grub.cfg
+	echo '}'                                >> isodir/boot/grub/grub.cfg
+	grub-mkrescue -o $@ isodir
 
 run: mykernel.iso
-	qemu-system-i386 -cdrom mykernel.iso
+	qemu-system-i386 -cdrom $<
 
 clean:
-	rm -f src/boot/boot.o
-	rm -f src/kernel/kernel.o
-	rm -f src/drivers/vga.o
-	rm -f src/arch/x86/gdt.o
-	rm -f src/arch/x86/idt.o
-	rm -f src/arch/x86/isr.o
-	rm -f src/arch/x86/isr_stubs.o
-	rm -f mykernel.bin mykernel.iso
+	rm -f $(OBJS) mykernel.bin mykernel.iso
 	rm -rf isodir
+
+.PHONY: all run clean
