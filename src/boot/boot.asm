@@ -23,7 +23,13 @@ extern kernel_main      ; defined in kernel.c
 
 _start:
     mov esp, stack_top  ; set up stack
-    call kernel_main    ; jump into C
+
+    ; --- ADDED CODE: Pass Multiboot arguments to kernel_main ---
+    push ebx            ; Push first argument (pointer to info struct)
+        push eax            ; Push second argument (magic number)
+
+    call kernel_main    ; jump into C (now receives magic and info struct)
+    
     hlt                 ; halt if kernel_main returns
 
     section .note.GNU-stack noalloc noexec nowrite progbits

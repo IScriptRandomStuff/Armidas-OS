@@ -2,6 +2,8 @@ ENTRY(_start)
 
 SECTIONS
 {
+    _kernel_start = .;
+
     . = 0x00100000;
 
     .text BLOCK(4K) : ALIGN(4K)
@@ -25,4 +27,6 @@ SECTIONS
         *(COMMON)
         *(.bss)
     }
+
+    _kernel_end = .;
 }

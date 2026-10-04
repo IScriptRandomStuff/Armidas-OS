@@ -43,7 +43,6 @@ void vga_putchar(char c)
             vga_row++;
         }
     }
-
     if (vga_row >= VGA_HEIGHT) {
         vga_row = 0;
     }
@@ -55,4 +54,14 @@ void vga_print(const char *str)
         vga_putchar(*str);
         str++;
     }
+}
+
+void vga_print_hex(uint32_t val) {
+    char buf[11] = "0x00000000";
+    for (int i = 9; i >= 2; i--) {
+        int nibble = val & 0xF;
+        buf[i] = nibble < 10 ? '0' + nibble : 'A' + nibble - 10;
+        val >>= 4;
+    }
+    vga_print(buf);
 }
